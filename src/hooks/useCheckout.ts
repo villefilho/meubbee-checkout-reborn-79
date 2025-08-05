@@ -1,15 +1,52 @@
-import { useState, useCallback } from 'react';
-import { CheckoutData, CheckoutStep, ValidationErrors, BuyerData, AddressData, CardData } from '@/types/checkout';
+import { useState, useCallback, useEffect } from 'react';
+import { CheckoutData, CheckoutStep, ValidationErrors, BuyerData, AddressData, CardData, CartItem } from '@/types/checkout';
+
+const parseCartFromURL = (): CartItem[] => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const items: CartItem[] = [];
+  
+  // Format: ?item=id,name,price,quantity&item=id2,name2,price2,quantity2
+  const itemParams = urlParams.getAll('item');
+  
+  itemParams.forEach(itemString => {
+    const [id, name, priceStr, quantityStr] = itemString.split(',');
+    if (id && name && priceStr && quantityStr) {
+      items.push({
+        id,
+        name,
+        price: parseInt(priceStr, 10),
+        quantity: parseInt(quantityStr, 10)
+      });
+    }
+  });
+  
+  return items;
+};
 
 export const useCheckout = () => {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>(1);
   const [data, setData] = useState<Partial<CheckoutData>>({
-    amount: 10000, // R$ 100,00 em centavos - exemplo
-    description: 'Presente do Chá de Bebê',
+    items: [],
+    amount: 0,
+    description: 'Carrinho de compras',
     paymentMethod: 'credit_card'
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  // Load cart items from URL on mount
+  useEffect(() => {
+    const cartItems = parseCartFromURL();
+    if (cartItems.length > 0) {
+      const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      setData(prev => ({
+        ...prev,
+        items: cartItems,
+        amount: totalAmount,
+        description: `Carrinho com ${cartItems.length} item(s)`
+      }));
+    }
+  }, []);
 
   const updateBuyerData = useCallback((buyerData: BuyerData) => {
     setData(prev => ({ ...prev, buyer: buyerData }));

@@ -1,3 +1,11 @@
+export interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+
 export interface BuyerData {
   name: string;
   email: string;
@@ -31,6 +39,7 @@ export interface CheckoutData {
   paymentMethod: 'credit_card' | 'pix' | 'boleto';
   amount: number;
   description: string;
+  items: CartItem[];
 }
 
 export interface PIXResponse {

@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { CheckoutHeader } from './CheckoutHeader';
 import { CheckoutProgressBar } from './CheckoutProgressBar';
+import { CartSummary } from './CartSummary';
 import { BuyerDataStep } from './steps/BuyerDataStep';
 import { AddressStep } from './steps/AddressStep';
 import { PaymentStep } from './steps/PaymentStep';
@@ -29,6 +30,7 @@ export const CheckoutContainer = () => {
         
         <Card className="mt-8 overflow-hidden shadow-card border-0 bg-background/95 backdrop-blur">
           <div className="p-6 md:p-8">
+            <CartSummary items={checkout.data.items || []} total={checkout.data.amount || 0} />
             <CheckoutProgressBar currentStep={checkout.currentStep} />
             
             <div className="mt-8">
