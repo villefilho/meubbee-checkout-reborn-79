@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, ArrowRight, MapPin, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MapPin, Search, CheckCircle, AlertCircle } from 'lucide-react';
 import { AddressData } from '@/types/checkout';
 import { formatCEP, onlyNumbers } from '@/utils/formatters';
 
@@ -13,6 +13,7 @@ interface AddressStepProps {
     data: { address?: AddressData };
     errors: { [key: string]: string };
     updateAddressData: (data: AddressData) => void;
+    updateField: (field: string, value: string, step: number) => void;
     nextStep: () => void;
     prevStep: () => void;
   };
@@ -61,6 +62,7 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
   });
 
   const [loadingCEP, setLoadingCEP] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
   const handleInputChange = (field: keyof AddressData, value: string) => {
     let formattedValue = value;
@@ -70,6 +72,34 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
     }
     
     setFormData(prev => ({ ...prev, [field]: formattedValue }));
+    checkout.updateField(field, formattedValue, 2);
+  };
+
+  const handleBlur = (field: keyof AddressData) => {
+    setTouchedFields(prev => new Set([...prev, field]));
+  };
+
+  const getFieldStatus = (field: keyof AddressData) => {
+    const isTouched = touchedFields.has(field);
+    const hasError = checkout.errors[field];
+    const hasValue = formData[field] && formData[field].trim() !== '';
+    
+    if (!isTouched) return 'default';
+    if (hasError) return 'error';
+    if (hasValue) return 'success';
+    return 'default';
+  };
+
+  const getStatusIcon = (field: keyof AddressData) => {
+    const status = getFieldStatus(field);
+    
+    if (status === 'success') {
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
+    }
+    if (status === 'error') {
+      return <AlertCircle className="w-4 h-4 text-red-500" />;
+    }
+    return null;
   };
 
   const searchCEP = async (cep: string) => {
@@ -82,13 +112,21 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
       const data = await response.json();
       
       if (!data.erro) {
-        setFormData(prev => ({
-          ...prev,
+        const updatedData = {
+          ...formData,
           street: data.logradouro || '',
           neighborhood: data.bairro || '',
           city: data.localidade || '',
           state: data.uf || '',
-        }));
+        };
+        
+        setFormData(updatedData);
+        
+        // Update all fields in checkout
+        checkout.updateField('street', updatedData.street, 2);
+        checkout.updateField('neighborhood', updatedData.neighborhood, 2);
+        checkout.updateField('city', updatedData.city, 2);
+        checkout.updateField('state', updatedData.state, 2);
       }
     } catch (error) {
       console.error('Erro ao buscar CEP:', error);
@@ -98,6 +136,7 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
   };
 
   const handleCEPBlur = () => {
+    handleBlur('zipcode');
     if (formData.zipcode) {
       searchCEP(formData.zipcode);
     }
@@ -140,7 +179,8 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
                   placeholder="00000-000"
                   maxLength={9}
                   className={`pr-10 transition-all duration-300 ${
-                    checkout.errors.zipcode ? 'border-destructive focus:border-destructive' : ''
+                    getFieldStatus('zipcode') === 'error' ? 'border-destructive focus:border-destructive' : 
+                    getFieldStatus('zipcode') === 'success' ? 'border-green-500 focus:border-green-500' : ''
                   }`}
                   required
                 />
@@ -149,11 +189,16 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
                     <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
                   </div>
                 ) : (
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {getStatusIcon('zipcode') || <Search className="w-4 h-4 text-muted-foreground" />}
+                  </div>
                 )}
               </div>
-              {checkout.errors.zipcode && (
-                <p className="text-sm text-destructive">{checkout.errors.zipcode}</p>
+              {checkout.errors.zipcode && touchedFields.has('zipcode') && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {checkout.errors.zipcode}
+                </p>
               )}
             </div>
 
@@ -162,19 +207,29 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
                 <Label htmlFor="street" className="text-sm font-medium">
                   Logradouro *
                 </Label>
-                <Input
-                  id="street"
-                  type="text"
-                  value={formData.street}
-                  onChange={(e) => handleInputChange('street', e.target.value)}
-                  placeholder="Rua, Avenida, etc."
-                  className={`transition-all duration-300 ${
-                    checkout.errors.street ? 'border-destructive focus:border-destructive' : ''
-                  }`}
-                  required
-                />
-                {checkout.errors.street && (
-                  <p className="text-sm text-destructive">{checkout.errors.street}</p>
+                <div className="relative">
+                  <Input
+                    id="street"
+                    type="text"
+                    value={formData.street}
+                    onChange={(e) => handleInputChange('street', e.target.value)}
+                    onBlur={() => handleBlur('street')}
+                    placeholder="Rua, Avenida, etc."
+                    className={`transition-all duration-300 pr-10 ${
+                      getFieldStatus('street') === 'error' ? 'border-destructive focus:border-destructive' : 
+                      getFieldStatus('street') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                    }`}
+                    required
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {getStatusIcon('street')}
+                  </div>
+                </div>
+                {checkout.errors.street && touchedFields.has('street') && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {checkout.errors.street}
+                  </p>
                 )}
               </div>
 
@@ -182,19 +237,29 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
                 <Label htmlFor="streetNumber" className="text-sm font-medium">
                   Número *
                 </Label>
-                <Input
-                  id="streetNumber"
-                  type="text"
-                  value={formData.streetNumber}
-                  onChange={(e) => handleInputChange('streetNumber', e.target.value)}
-                  placeholder="123"
-                  className={`transition-all duration-300 ${
-                    checkout.errors.streetNumber ? 'border-destructive focus:border-destructive' : ''
-                  }`}
-                  required
-                />
-                {checkout.errors.streetNumber && (
-                  <p className="text-sm text-destructive">{checkout.errors.streetNumber}</p>
+                <div className="relative">
+                  <Input
+                    id="streetNumber"
+                    type="text"
+                    value={formData.streetNumber}
+                    onChange={(e) => handleInputChange('streetNumber', e.target.value)}
+                    onBlur={() => handleBlur('streetNumber')}
+                    placeholder="123"
+                    className={`transition-all duration-300 pr-10 ${
+                      getFieldStatus('streetNumber') === 'error' ? 'border-destructive focus:border-destructive' : 
+                      getFieldStatus('streetNumber') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                    }`}
+                    required
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {getStatusIcon('streetNumber')}
+                  </div>
+                </div>
+                {checkout.errors.streetNumber && touchedFields.has('streetNumber') && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {checkout.errors.streetNumber}
+                  </p>
                 )}
               </div>
             </div>
@@ -217,19 +282,29 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
               <Label htmlFor="neighborhood" className="text-sm font-medium">
                 Bairro *
               </Label>
-              <Input
-                id="neighborhood"
-                type="text"
-                value={formData.neighborhood}
-                onChange={(e) => handleInputChange('neighborhood', e.target.value)}
-                placeholder="Seu bairro"
-                className={`transition-all duration-300 ${
-                  checkout.errors.neighborhood ? 'border-destructive focus:border-destructive' : ''
-                }`}
-                required
-              />
-              {checkout.errors.neighborhood && (
-                <p className="text-sm text-destructive">{checkout.errors.neighborhood}</p>
+              <div className="relative">
+                <Input
+                  id="neighborhood"
+                  type="text"
+                  value={formData.neighborhood}
+                  onChange={(e) => handleInputChange('neighborhood', e.target.value)}
+                  onBlur={() => handleBlur('neighborhood')}
+                  placeholder="Seu bairro"
+                  className={`transition-all duration-300 pr-10 ${
+                    getFieldStatus('neighborhood') === 'error' ? 'border-destructive focus:border-destructive' : 
+                    getFieldStatus('neighborhood') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                  }`}
+                  required
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  {getStatusIcon('neighborhood')}
+                </div>
+              </div>
+              {checkout.errors.neighborhood && touchedFields.has('neighborhood') && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {checkout.errors.neighborhood}
+                </p>
               )}
             </div>
 
@@ -238,19 +313,29 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
                 <Label htmlFor="city" className="text-sm font-medium">
                   Cidade *
                 </Label>
-                <Input
-                  id="city"
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Sua cidade"
-                  className={`transition-all duration-300 ${
-                    checkout.errors.city ? 'border-destructive focus:border-destructive' : ''
-                  }`}
-                  required
-                />
-                {checkout.errors.city && (
-                  <p className="text-sm text-destructive">{checkout.errors.city}</p>
+                <div className="relative">
+                  <Input
+                    id="city"
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    onBlur={() => handleBlur('city')}
+                    placeholder="Sua cidade"
+                    className={`transition-all duration-300 pr-10 ${
+                      getFieldStatus('city') === 'error' ? 'border-destructive focus:border-destructive' : 
+                      getFieldStatus('city') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                    }`}
+                    required
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {getStatusIcon('city')}
+                  </div>
+                </div>
+                {checkout.errors.city && touchedFields.has('city') && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {checkout.errors.city}
+                  </p>
                 )}
               </div>
 
@@ -258,25 +343,37 @@ export const AddressStep = ({ checkout }: AddressStepProps) => {
                 <Label htmlFor="state" className="text-sm font-medium">
                   Estado *
                 </Label>
-                <Select
-                  value={formData.state}
-                  onValueChange={(value) => handleInputChange('state', value)}
-                >
-                  <SelectTrigger className={`transition-all duration-300 ${
-                    checkout.errors.state ? 'border-destructive focus:border-destructive' : ''
-                  }`}>
-                    <SelectValue placeholder="Selecione o estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {brazilianStates.map((state) => (
-                      <SelectItem key={state.code} value={state.code}>
-                        {state.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {checkout.errors.state && (
-                  <p className="text-sm text-destructive">{checkout.errors.state}</p>
+                <div className="relative">
+                  <Select
+                    value={formData.state}
+                    onValueChange={(value) => {
+                      handleInputChange('state', value);
+                      handleBlur('state');
+                    }}
+                  >
+                    <SelectTrigger className={`transition-all duration-300 pr-10 ${
+                      getFieldStatus('state') === 'error' ? 'border-destructive focus:border-destructive' : 
+                      getFieldStatus('state') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                    }`}>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {brazilianStates.map((state) => (
+                        <SelectItem key={state.code} value={state.code}>
+                          {state.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {getStatusIcon('state')}
+                  </div>
+                </div>
+                {checkout.errors.state && touchedFields.has('state') && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {checkout.errors.state}
+                  </p>
                 )}
               </div>
             </div>

@@ -2,7 +2,8 @@ import { CheckoutData, PIXResponse, BoletoResponse } from '@/types/checkout';
 
 // Configurações da API do Pagar.me
 const PAGARME_API_URL = 'https://api.pagar.me/core/v5';
-const PAGARME_API_KEY = 'YOUR_PAGARME_API_KEY'; // Substitua pela sua chave
+const PAGARME_API_KEY = 'sk_test_5ad1ae64dc3648c7ad8711325a43db49'; // Substitua pela sua chave
+const PAGARME_RECEBEDOR = 're_cmdjcsrtb00lh0l9tq1vi5uja';
 
 export interface PagarmeTransactionRequest {
   amount: number;

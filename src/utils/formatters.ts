@@ -76,5 +76,88 @@ export const validateCPF = (cpf: string): boolean => {
 };
 
 export const validateEmail = (email: string): boolean => {
-  return /\S+@\S+\.\S+/.test(email);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// New validation functions for real-time validation
+export const validatePhone = (phone: string): boolean => {
+  const numbers = phone.replace(/\D/g, '');
+  return numbers.length >= 10 && numbers.length <= 11;
+};
+
+export const validateCEP = (cep: string): boolean => {
+  const numbers = cep.replace(/\D/g, '');
+  return numbers.length === 8;
+};
+
+export const validateCardNumber = (number: string): boolean => {
+  const numbers = number.replace(/\D/g, '');
+  if (numbers.length < 13 || numbers.length > 19) return false;
+  
+  // Luhn algorithm
+  let sum = 0;
+  let isEven = false;
+  
+  for (let i = numbers.length - 1; i >= 0; i--) {
+    let digit = parseInt(numbers[i]);
+    
+    if (isEven) {
+      digit *= 2;
+      if (digit > 9) {
+        digit -= 9;
+      }
+    }
+    
+    sum += digit;
+    isEven = !isEven;
+  }
+  
+  return sum % 10 === 0;
+};
+
+export const validateCVV = (cvv: string): boolean => {
+  const numbers = cvv.replace(/\D/g, '');
+  return numbers.length >= 3 && numbers.length <= 4;
+};
+
+export const validateExpirationDate = (month: string, year: string): boolean => {
+  if (!month || !year) return false;
+  
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+  
+  const expYear = parseInt(year);
+  const expMonth = parseInt(month);
+  
+  if (expYear < currentYear) return false;
+  if (expYear === currentYear && expMonth < currentMonth) return false;
+  if (expMonth < 1 || expMonth > 12) return false;
+  
+  return true;
+};
+
+export const validateName = (name: string): boolean => {
+  return name.trim().length >= 2 && /^[a-zA-ZÀ-ÿ\s]+$/.test(name);
+};
+
+export const validateStreet = (street: string): boolean => {
+  return street.trim().length >= 3;
+};
+
+export const validateStreetNumber = (number: string): boolean => {
+  return number.trim().length >= 1;
+};
+
+export const validateNeighborhood = (neighborhood: string): boolean => {
+  return neighborhood.trim().length >= 2;
+};
+
+export const validateCity = (city: string): boolean => {
+  return city.trim().length >= 2;
+};
+
+export const validateState = (state: string): boolean => {
+  return state.length === 2;
 };

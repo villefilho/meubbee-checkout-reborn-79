@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, CreditCard, QrCode, FileText, Shield, Check } from 'lucide-react';
+import { ArrowLeft, CreditCard, QrCode, FileText, Shield, Check, CheckCircle, AlertCircle } from 'lucide-react';
 import { CardData } from '@/types/checkout';
 import { formatCardNumber, formatExpirationDate, onlyNumbers, formatCurrency } from '@/utils/formatters';
 
@@ -21,6 +21,7 @@ interface PaymentStepProps {
     isLoading: boolean;
     updateCardData: (data: CardData) => void;
     updatePaymentMethod: (method: 'credit_card' | 'pix' | 'boleto') => void;
+    updateField: (field: string, value: string, step: number) => void;
     prevStep: () => void;
     processPayment: () => Promise<any>;
   };
@@ -37,6 +38,7 @@ export const PaymentStep = ({ checkout }: PaymentStepProps) => {
 
   const [paymentProcessed, setPaymentProcessed] = useState(false);
   const [paymentResult, setPaymentResult] = useState<any>(null);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
   const handleCardInputChange = (field: keyof CardData, value: string) => {
     let formattedValue = value;
@@ -50,6 +52,34 @@ export const PaymentStep = ({ checkout }: PaymentStepProps) => {
     }
     
     setCardData(prev => ({ ...prev, [field]: formattedValue }));
+    checkout.updateField(field, formattedValue, 3);
+  };
+
+  const handleBlur = (field: keyof CardData) => {
+    setTouchedFields(prev => new Set([...prev, field]));
+  };
+
+  const getFieldStatus = (field: keyof CardData) => {
+    const isTouched = touchedFields.has(field);
+    const hasError = checkout.errors[field];
+    const hasValue = cardData[field] && cardData[field].trim() !== '';
+    
+    if (!isTouched) return 'default';
+    if (hasError) return 'error';
+    if (hasValue) return 'success';
+    return 'default';
+  };
+
+  const getStatusIcon = (field: keyof CardData) => {
+    const status = getFieldStatus(field);
+    
+    if (status === 'success') {
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
+    }
+    if (status === 'error') {
+      return <AlertCircle className="w-4 h-4 text-red-500" />;
+    }
+    return null;
   };
 
   const handlePaymentMethodChange = (method: 'credit_card' | 'pix' | 'boleto') => {
@@ -182,19 +212,29 @@ export const PaymentStep = ({ checkout }: PaymentStepProps) => {
                   <Label htmlFor="holderName" className="text-sm font-medium">
                     Nome no Cartão *
                   </Label>
-                  <Input
-                    id="holderName"
-                    type="text"
-                    value={cardData.holderName}
-                    onChange={(e) => handleCardInputChange('holderName', e.target.value)}
-                    placeholder="NOME COMO IMPRESSO NO CARTÃO"
-                    className={`transition-all duration-300 ${
-                      checkout.errors.holderName ? 'border-destructive focus:border-destructive' : ''
-                    }`}
-                    required
-                  />
-                  {checkout.errors.holderName && (
-                    <p className="text-sm text-destructive">{checkout.errors.holderName}</p>
+                  <div className="relative">
+                    <Input
+                      id="holderName"
+                      type="text"
+                      value={cardData.holderName}
+                      onChange={(e) => handleCardInputChange('holderName', e.target.value)}
+                      onBlur={() => handleBlur('holderName')}
+                      placeholder="NOME COMO IMPRESSO NO CARTÃO"
+                      className={`transition-all duration-300 pr-10 ${
+                        getFieldStatus('holderName') === 'error' ? 'border-destructive focus:border-destructive' : 
+                        getFieldStatus('holderName') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                      }`}
+                      required
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      {getStatusIcon('holderName')}
+                    </div>
+                  </div>
+                  {checkout.errors.holderName && touchedFields.has('holderName') && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {checkout.errors.holderName}
+                    </p>
                   )}
                 </div>
 
@@ -202,20 +242,30 @@ export const PaymentStep = ({ checkout }: PaymentStepProps) => {
                   <Label htmlFor="number" className="text-sm font-medium">
                     Número do Cartão *
                   </Label>
-                  <Input
-                    id="number"
-                    type="text"
-                    value={cardData.number}
-                    onChange={(e) => handleCardInputChange('number', e.target.value)}
-                    placeholder="0000 0000 0000 0000"
-                    maxLength={19}
-                    className={`transition-all duration-300 ${
-                      checkout.errors.number ? 'border-destructive focus:border-destructive' : ''
-                    }`}
-                    required
-                  />
-                  {checkout.errors.number && (
-                    <p className="text-sm text-destructive">{checkout.errors.number}</p>
+                  <div className="relative">
+                    <Input
+                      id="number"
+                      type="text"
+                      value={cardData.number}
+                      onChange={(e) => handleCardInputChange('number', e.target.value)}
+                      onBlur={() => handleBlur('number')}
+                      placeholder="0000 0000 0000 0000"
+                      maxLength={19}
+                      className={`transition-all duration-300 pr-10 ${
+                        getFieldStatus('number') === 'error' ? 'border-destructive focus:border-destructive' : 
+                        getFieldStatus('number') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                      }`}
+                      required
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      {getStatusIcon('number')}
+                    </div>
+                  </div>
+                  {checkout.errors.number && touchedFields.has('number') && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {checkout.errors.number}
+                    </p>
                   )}
                 </div>
 
@@ -224,25 +274,37 @@ export const PaymentStep = ({ checkout }: PaymentStepProps) => {
                     <Label htmlFor="expirationMonth" className="text-sm font-medium">
                       Mês *
                     </Label>
-                    <Select
-                      value={cardData.expirationMonth}
-                      onValueChange={(value) => handleCardInputChange('expirationMonth', value)}
-                    >
-                      <SelectTrigger className={`transition-all duration-300 ${
-                        checkout.errors.expirationMonth ? 'border-destructive focus:border-destructive' : ''
-                      }`}>
-                        <SelectValue placeholder="Mês" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {months.map((month) => (
-                          <SelectItem key={month.value} value={month.value}>
-                            {month.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {checkout.errors.expirationMonth && (
-                      <p className="text-sm text-destructive">{checkout.errors.expirationMonth}</p>
+                    <div className="relative">
+                      <Select
+                        value={cardData.expirationMonth}
+                        onValueChange={(value) => {
+                          handleCardInputChange('expirationMonth', value);
+                          handleBlur('expirationMonth');
+                        }}
+                      >
+                        <SelectTrigger className={`transition-all duration-300 pr-10 ${
+                          getFieldStatus('expirationMonth') === 'error' ? 'border-destructive focus:border-destructive' : 
+                          getFieldStatus('expirationMonth') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                        }`}>
+                          <SelectValue placeholder="Mês" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month) => (
+                            <SelectItem key={month.value} value={month.value}>
+                              {month.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {getStatusIcon('expirationMonth')}
+                      </div>
+                    </div>
+                    {checkout.errors.expirationMonth && touchedFields.has('expirationMonth') && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {checkout.errors.expirationMonth}
+                      </p>
                     )}
                   </div>
 
@@ -250,25 +312,37 @@ export const PaymentStep = ({ checkout }: PaymentStepProps) => {
                     <Label htmlFor="expirationYear" className="text-sm font-medium">
                       Ano *
                     </Label>
-                    <Select
-                      value={cardData.expirationYear}
-                      onValueChange={(value) => handleCardInputChange('expirationYear', value)}
-                    >
-                      <SelectTrigger className={`transition-all duration-300 ${
-                        checkout.errors.expirationYear ? 'border-destructive focus:border-destructive' : ''
-                      }`}>
-                        <SelectValue placeholder="Ano" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {years.map((year) => (
-                          <SelectItem key={year} value={year.toString()}>
-                            {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {checkout.errors.expirationYear && (
-                      <p className="text-sm text-destructive">{checkout.errors.expirationYear}</p>
+                    <div className="relative">
+                      <Select
+                        value={cardData.expirationYear}
+                        onValueChange={(value) => {
+                          handleCardInputChange('expirationYear', value);
+                          handleBlur('expirationYear');
+                        }}
+                      >
+                        <SelectTrigger className={`transition-all duration-300 pr-10 ${
+                          getFieldStatus('expirationYear') === 'error' ? 'border-destructive focus:border-destructive' : 
+                          getFieldStatus('expirationYear') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                        }`}>
+                          <SelectValue placeholder="Ano" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {getStatusIcon('expirationYear')}
+                      </div>
+                    </div>
+                    {checkout.errors.expirationYear && touchedFields.has('expirationYear') && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {checkout.errors.expirationYear}
+                      </p>
                     )}
                   </div>
 
@@ -276,20 +350,30 @@ export const PaymentStep = ({ checkout }: PaymentStepProps) => {
                     <Label htmlFor="cvv" className="text-sm font-medium">
                       CVV *
                     </Label>
-                    <Input
-                      id="cvv"
-                      type="text"
-                      value={cardData.cvv}
-                      onChange={(e) => handleCardInputChange('cvv', e.target.value)}
-                      placeholder="000"
-                      maxLength={4}
-                      className={`transition-all duration-300 ${
-                        checkout.errors.cvv ? 'border-destructive focus:border-destructive' : ''
-                      }`}
-                      required
-                    />
-                    {checkout.errors.cvv && (
-                      <p className="text-sm text-destructive">{checkout.errors.cvv}</p>
+                    <div className="relative">
+                      <Input
+                        id="cvv"
+                        type="text"
+                        value={cardData.cvv}
+                        onChange={(e) => handleCardInputChange('cvv', e.target.value)}
+                        onBlur={() => handleBlur('cvv')}
+                        placeholder="000"
+                        maxLength={4}
+                        className={`transition-all duration-300 pr-10 ${
+                          getFieldStatus('cvv') === 'error' ? 'border-destructive focus:border-destructive' : 
+                          getFieldStatus('cvv') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                        }`}
+                        required
+                      />
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {getStatusIcon('cvv')}
+                      </div>
+                    </div>
+                    {checkout.errors.cvv && touchedFields.has('cvv') && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {checkout.errors.cvv}
+                      </p>
                     )}
                   </div>
                 </div>

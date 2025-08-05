@@ -3,15 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, User } from 'lucide-react';
+import { ArrowRight, User, CheckCircle, AlertCircle } from 'lucide-react';
 import { BuyerData } from '@/types/checkout';
-import { formatCPF, formatPhone, onlyNumbers, validateCPF } from '@/utils/formatters';
+import { formatCPF, formatPhone } from '@/utils/formatters';
 
 interface BuyerDataStepProps {
   checkout: {
     data: { buyer?: BuyerData };
     errors: { [key: string]: string };
     updateBuyerData: (data: BuyerData) => void;
+    updateField: (field: string, value: string, step: number) => void;
     nextStep: () => void;
   };
 }
@@ -24,6 +25,8 @@ export const BuyerDataStep = ({ checkout }: BuyerDataStepProps) => {
     phone: checkout.data.buyer?.phone || '',
   });
 
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+
   const handleInputChange = (field: keyof BuyerData, value: string) => {
     let formattedValue = value;
     
@@ -34,6 +37,34 @@ export const BuyerDataStep = ({ checkout }: BuyerDataStepProps) => {
     }
     
     setFormData(prev => ({ ...prev, [field]: formattedValue }));
+    checkout.updateField(field, formattedValue, 1);
+  };
+
+  const handleBlur = (field: keyof BuyerData) => {
+    setTouchedFields(prev => new Set([...prev, field]));
+  };
+
+  const getFieldStatus = (field: keyof BuyerData) => {
+    const isTouched = touchedFields.has(field);
+    const hasError = checkout.errors[field];
+    const hasValue = formData[field] && formData[field].trim() !== '';
+    
+    if (!isTouched) return 'default';
+    if (hasError) return 'error';
+    if (hasValue) return 'success';
+    return 'default';
+  };
+
+  const getStatusIcon = (field: keyof BuyerData) => {
+    const status = getFieldStatus(field);
+    
+    if (status === 'success') {
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
+    }
+    if (status === 'error') {
+      return <AlertCircle className="w-4 h-4 text-red-500" />;
+    }
+    return null;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -65,19 +96,30 @@ export const BuyerDataStep = ({ checkout }: BuyerDataStepProps) => {
               <Label htmlFor="name" className="text-sm font-medium">
                 Nome Completo *
               </Label>
-              <Input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Digite seu nome completo"
-                className={`transition-all duration-300 ${
-                  checkout.errors.name ? 'border-destructive focus:border-destructive' : ''
-                }`}
-                required
-              />
-              {checkout.errors.name && (
-                <p className="text-sm text-destructive">{checkout.errors.name}</p>
+              <div className="relative">
+                <Input
+                  id="name"
+                  type="text"
+                  value={formData.name}
+                  name="name"
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  onBlur={() => handleBlur('name')}
+                  placeholder="Digite seu nome completo"
+                  className={`transition-all duration-300 pr-10 ${
+                    getFieldStatus('name') === 'error' ? 'border-destructive focus:border-destructive' : 
+                    getFieldStatus('name') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                  }`}
+                  required
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  {getStatusIcon('name')}
+                </div>
+              </div>
+              {checkout.errors.name && touchedFields.has('name') && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {checkout.errors.name}
+                </p>
               )}
             </div>
 
@@ -85,19 +127,30 @@ export const BuyerDataStep = ({ checkout }: BuyerDataStepProps) => {
               <Label htmlFor="email" className="text-sm font-medium">
                 E-mail *
               </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="seu@email.com"
-                className={`transition-all duration-300 ${
-                  checkout.errors.email ? 'border-destructive focus:border-destructive' : ''
-                }`}
-                required
-              />
-              {checkout.errors.email && (
-                <p className="text-sm text-destructive">{checkout.errors.email}</p>
+              <div className="relative">
+                <Input
+                  id="email"
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  placeholder="seu@email.com"
+                  className={`transition-all duration-300 pr-10 ${
+                    getFieldStatus('email') === 'error' ? 'border-destructive focus:border-destructive' : 
+                    getFieldStatus('email') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                  }`}
+                  required
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  {getStatusIcon('email')}
+                </div>
+              </div>
+              {checkout.errors.email && touchedFields.has('email') && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {checkout.errors.email}
+                </p>
               )}
             </div>
 
@@ -105,20 +158,31 @@ export const BuyerDataStep = ({ checkout }: BuyerDataStepProps) => {
               <Label htmlFor="document" className="text-sm font-medium">
                 CPF *
               </Label>
-              <Input
-                id="document"
-                type="text"
-                value={formData.document}
-                onChange={(e) => handleInputChange('document', e.target.value)}
-                placeholder="000.000.000-00"
-                maxLength={14}
-                className={`transition-all duration-300 ${
-                  checkout.errors.document ? 'border-destructive focus:border-destructive' : ''
-                }`}
-                required
-              />
-              {checkout.errors.document && (
-                <p className="text-sm text-destructive">{checkout.errors.document}</p>
+              <div className="relative">
+                <Input
+                  id="document"
+                  type="text"
+                  name="document"
+                  value={formData.document}
+                  onChange={(e) => handleInputChange('document', e.target.value)}
+                  onBlur={() => handleBlur('document')}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  className={`transition-all duration-300 pr-10 ${
+                    getFieldStatus('document') === 'error' ? 'border-destructive focus:border-destructive' : 
+                    getFieldStatus('document') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                  }`}
+                  required
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  {getStatusIcon('document')}
+                </div>
+              </div>
+              {checkout.errors.document && touchedFields.has('document') && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {checkout.errors.document}
+                </p>
               )}
             </div>
 
@@ -126,20 +190,31 @@ export const BuyerDataStep = ({ checkout }: BuyerDataStepProps) => {
               <Label htmlFor="phone" className="text-sm font-medium">
                 Telefone *
               </Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="(11) 99999-9999"
-                maxLength={15}
-                className={`transition-all duration-300 ${
-                  checkout.errors.phone ? 'border-destructive focus:border-destructive' : ''
-                }`}
-                required
-              />
-              {checkout.errors.phone && (
-                <p className="text-sm text-destructive">{checkout.errors.phone}</p>
+              <div className="relative">
+                <Input
+                  id="phone"
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  onBlur={() => handleBlur('phone')}
+                  placeholder="(11) 99999-9999"
+                  maxLength={15}
+                  className={`transition-all duration-300 pr-10 ${
+                    getFieldStatus('phone') === 'error' ? 'border-destructive focus:border-destructive' : 
+                    getFieldStatus('phone') === 'success' ? 'border-green-500 focus:border-green-500' : ''
+                  }`}
+                  required
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  {getStatusIcon('phone')}
+                </div>
+              </div>
+              {checkout.errors.phone && touchedFields.has('phone') && (
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {checkout.errors.phone}
+                </p>
               )}
             </div>
           </div>

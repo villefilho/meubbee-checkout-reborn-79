@@ -10,13 +10,8 @@ interface CartSummaryProps {
 export const CartSummary = ({ items, total }: CartSummaryProps) => {
   if (items.length === 0) {
     return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Carrinho</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Nenhum item no carrinho</p>
-        </CardContent>
+      <Card className="hidden">
+        
       </Card>
     );
   }
