@@ -68,6 +68,7 @@ export const useCheckout = () => {
   }, []);
 
   const validateStep = useCallback((step: CheckoutStep): boolean => {
+    console.log('Validating step:', step, 'with data:', data);
     const newErrors: ValidationErrors = {};
 
     switch (step) {
@@ -103,6 +104,7 @@ export const useCheckout = () => {
         break;
     }
 
+    console.log('Validation errors:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [data]);

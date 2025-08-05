@@ -38,7 +38,9 @@ export const BuyerDataStep = ({ checkout }: BuyerDataStepProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Submitting form data:', formData);
     checkout.updateBuyerData(formData);
+    console.log('Calling nextStep');
     checkout.nextStep();
   };
 
