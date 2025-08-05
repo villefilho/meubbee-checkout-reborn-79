@@ -38,12 +38,6 @@ export const BuyerDataStep = ({ checkout }: BuyerDataStepProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate CPF
-    if (!validateCPF(formData.document)) {
-      return;
-    }
-    
     checkout.updateBuyerData(formData);
     checkout.nextStep();
   };

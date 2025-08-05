@@ -76,6 +76,10 @@ export const useCheckout = () => {
         if (!data.buyer?.email) newErrors.email = 'Email é obrigatório';
         else if (!/\S+@\S+\.\S+/.test(data.buyer.email)) newErrors.email = 'Email inválido';
         if (!data.buyer?.document) newErrors.document = 'CPF é obrigatório';
+        else {
+          const { validateCPF } = require('@/utils/formatters');
+          if (!validateCPF(data.buyer.document)) newErrors.document = 'CPF inválido';
+        }
         if (!data.buyer?.phone) newErrors.phone = 'Telefone é obrigatório';
         break;
 
